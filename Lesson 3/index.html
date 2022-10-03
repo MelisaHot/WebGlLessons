@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            html, body{margin: 0px; padding: 0px; width: 100%; height: 100%;}
+            body{background-color: #404040;}
+            canvas{border: 1px solid black;}
+            div{display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;} 
+        </style>
+        <script src="gl.js"></script>
+        <script src="Shader.js"></script>
+        <script src="RenderLoop.js"></script>
+        <script src="Modal.js"></script>
+        <script>
+            var gl,                 //global reference to our extended gl context
+                gVertCnt = 0,       //TODO: temporarly storing vertice count globally until we have our mesh function
+                uPointSizeLoc = -1, //TODO: temp storing globally until we have VaO object setup
+                uAngle = 0,
+                gRLoop;             // global ref to our render loop  
+                gShader = null;
+                gModal = null;        
+
+                window.addEventListener("load",function(){
+				//............................................				
+				//Get our extended GL Context Object
+				    gl = GLInstance("glcanvas").fSetSize(500,500).fClear();
+
+                    // shader test 
+                    gShader = new TestShader(gl);
+
+                    //---------set up data buffers
+                    var mesh = gl.fCreateMeshVAO("dots", null, [0, 0, 0,  0.1, 0.1, 0,   0.1, -0.1, 0,   -0.1, -0.1, 0,    -0.1, 0.1, 0]);
+                    mesh.drawMode = gl.POINTS; // most often to draw mode will be triangles, but this instance we need poits
+                    gModal = new Modal(mesh);
+                  
+                    RLoop = new RenderLoop(onRender).start();                
+                });
+                    var gPointSize	= 0,
+				        gPSizeStep	= 3,
+                        gAngle		= 0,
+				        gAngleStep	= (Math.PI / 180.0) * 90;	//90 degrees in Radians
+                    function onRender(dt){
+                        
+                        gl.fClear();
+                        gShader.activate().set(
+                            (Math.sin((gPointSize+=gPSizeStep*dt))*10.0)+30.0,
+                            (gAngle +=gAngleStep*dt)
+                        ).renderModal(gModal);
+                    }
+
+                    class TestShader extends Shader{
+                        constructor(gl){
+                            var vertSrc = ShaderUtil.domShaderSrc("vertex_shader"),
+                                fragSrc = ShaderUtil.domShaderSrc("fragment_shader");
+                            super(gl, vertSrc, fragSrc);
+
+                            this.uniformLoc.uPointSize = gl.getUniformLocation(this.program, "uPointSize");
+                            this.uniformLoc.uAnge = gl.getUniformLocation(this.program, "uAngle");
+                            
+                            gl.useProgram(null);
+
+                        }
+                        set(size, angle){
+                            this.gl.uniform1f(this.uniformLoc.uPointSize, size);
+                            this.gl.uniform1f(this.uniformLoc.uAnge, angle);
+                            return this;
+                        }
+                    }
+        </script>
+    </head>
+<body>
+    <div>
+        <canvas id="glcanvas"></canvas>
+    </div>
+    <script id="vertex_shader" type="x-shader/x-vertex">#version 300 es
+        in vec3 a_position;
+        
+        uniform mediump float uPointSize;
+        uniform float uAngle;
+        void main(void){
+            gl_PointSize = uPointSize;
+            gl_Position = vec4(
+                cos(uAngle)*0.8+a_position.x, 
+                sin(uAngle)*0.8 +a_position.y,
+                a_position.z, 1.0);
+        }
+    </script>
+
+    <script id="fragment_shader" type="x-shader/x-fradment">#version 300 es
+        precision mediump float;
+        
+        uniform float uPointSize;
+        out vec4 finalColor;
+        void main(void){
+            float c = (40.0 -uPointSize) /20.0;
+            finalColor = vec4(c, c, c, 1.0);
+        }
+
+    </script>
+</body>
+</html>
